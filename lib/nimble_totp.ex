@@ -163,18 +163,21 @@ defmodule NimbleTOTP do
   def verification_code(secret, opts \\ []) do
     time = opts |> Keyword.get(:time, System.os_time(:second)) |> to_unix()
     period = Keyword.get(opts, :period, @default_totp_period)
+    totp_size = Keyword.get(opts, :totp_size, @totp_size)
 
-    verification_code(secret, time, period)
+    verification_code(secret, time, period, totp_size)
   end
 
-  @spec verification_code(binary(), integer(), pos_integer()) :: binary()
-  defp verification_code(secret, time, period) do
+  @spec verification_code(binary(), integer(), pos_integer(), pos_integer()) :: binary()
+  defp verification_code(secret, time, period, totp_size \\ @totp_size) do
+    divisor = 10 ** totp_size
+
     secret
     |> hmac(time, period)
     |> hmac_truncate()
-    |> rem(1_000_000)
+    |> rem(divisor)
     |> to_string()
-    |> String.pad_leading(@totp_size, "0")
+    |> String.pad_leading(totp_size, "0")
   end
 
   defp hmac(secret, time, period) do

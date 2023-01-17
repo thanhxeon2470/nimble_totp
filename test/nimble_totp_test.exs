@@ -51,11 +51,27 @@ defmodule NimbleTOTPTest do
       end
     end
 
+    test "generate 4 digit verification codes" do
+      now = System.os_time(:second)
+
+      for _ <- 1..1000 do
+        secret = NimbleTOTP.secret()
+        assert NimbleTOTP.verification_code(secret, time: now, totp_size: 4) =~ ~r/\d{4}/
+      end
+    end
+
     test "add leading zeros to reach length 6" do
       secret = Base.decode32!("BKFCZBQPZOXNTER5HKHGPHPGCXBNBDNC")
       time = to_unix(~N[2020-04-08 18:09:11Z])
 
       assert NimbleTOTP.verification_code(secret, time: time) == "005357"
+    end
+
+    test "add leading zeros to reach length 4" do
+      secret = Base.decode32!("BKFCZBQPZOXNTER5HKHGPHPGCXBNBDNA")
+      time = to_unix(~N[2023-01-17 06:36:22Z])
+
+      assert NimbleTOTP.verification_code(secret, time: time, totp_size: 4) == "0760"
     end
 
     test "generate different codes in different periods (default is 30s)" do
@@ -70,6 +86,24 @@ defmodule NimbleTOTPTest do
       assert code2 == NimbleTOTP.verification_code(secret, time: to_unix(time2))
       code3 = NimbleTOTP.verification_code(secret, time: time3)
       assert code3 == NimbleTOTP.verification_code(secret, time: to_unix(time3))
+
+      codes = [code1, code2, code3]
+
+      assert Enum.uniq(codes) == codes
+    end
+
+    test "generate different codes in different periods (default is 30s, 4 digit)" do
+      secret = NimbleTOTP.secret()
+      time1 = ~N[2020-04-08 17:49:59Z]
+      time2 = ~N[2020-04-08 17:50:00Z]
+      time3 = ~N[2020-04-08 17:50:30Z]
+
+      code1 = NimbleTOTP.verification_code(secret, time: time1, totp_size: 4)
+      assert code1 == NimbleTOTP.verification_code(secret, time: to_unix(time1), totp_size: 4)
+      code2 = NimbleTOTP.verification_code(secret, time: time2, totp_size: 4)
+      assert code2 == NimbleTOTP.verification_code(secret, time: to_unix(time2), totp_size: 4)
+      code3 = NimbleTOTP.verification_code(secret, time: time3, totp_size: 4)
+      assert code3 == NimbleTOTP.verification_code(secret, time: to_unix(time3), totp_size: 4)
 
       codes = [code1, code2, code3]
 
