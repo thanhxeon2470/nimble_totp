@@ -247,6 +247,17 @@ defmodule NimbleTOTP do
        bxor(e6, a6)) === 0 and not reused?(time, period, opts)
   end
 
+  def valid?(secret, <<a1, a2, a3, a4>>, opts) do
+    time = opts |> Keyword.get(:time, System.os_time(:second)) |> to_unix()
+    period = Keyword.get(opts, :period, @default_totp_period)
+    totp_size = Keyword.get(opts, :totp_size, @totp_size)
+
+    <<e1, e2, e3, e4>> = verification_code(secret, time, period, totp_size)
+
+    (bxor(e1, a1) ||| bxor(e2, a2) ||| bxor(e3, a3) ||| bxor(e4, a4)) === 0 and
+      not reused?(time, period, opts)
+  end
+
   def valid?(_secret, _otp, _opts), do: false
 
   @spec reused?(integer(), pos_integer(), [option() | validate_option()]) :: boolean()

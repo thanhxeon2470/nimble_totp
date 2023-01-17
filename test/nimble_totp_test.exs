@@ -144,6 +144,28 @@ defmodule NimbleTOTPTest do
       end
     end
 
+    test "returns true if it matches the verification code (4 digit)" do
+      time = System.os_time(:second)
+      date_time = DateTime.from_unix!(time, :second)
+      naive_date_time = DateTime.to_naive(date_time)
+
+      for _ <- 1..1000 do
+        secret = NimbleTOTP.secret()
+
+        code = NimbleTOTP.verification_code(secret, time: time, totp_size: 4)
+        assert code == NimbleTOTP.verification_code(secret, time: date_time, totp_size: 4)
+        assert code == NimbleTOTP.verification_code(secret, time: naive_date_time, totp_size: 4)
+
+        assert NimbleTOTP.valid?(secret, code, time: time, totp_size: 4)
+        assert NimbleTOTP.valid?(secret, code, time: date_time, totp_size: 4)
+        assert NimbleTOTP.valid?(secret, code, time: naive_date_time, totp_size: 4)
+
+        # refute NimbleTOTP.valid?(secret, "abcdef", time: time)
+        # refute NimbleTOTP.valid?(secret, "abcdef", time: date_time)
+        # refute NimbleTOTP.valid?(secret, "abcdef", time: naive_date_time)
+      end
+    end
+
     test "rejects reused verification codes" do
       time = System.os_time(:second)
       next_time = (Integer.floor_div(time, 30) + 1) * 30
