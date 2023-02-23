@@ -237,28 +237,25 @@ defmodule NimbleTOTP do
   @spec valid?(binary(), String.t(), [option() | validate_option()]) :: boolean()
   def valid?(secret, otp, opts \\ [])
 
-  def valid?(secret, <<a1, a2, a3, a4, a5, a6>>, opts) do
-    time = opts |> Keyword.get(:time, System.os_time(:second)) |> to_unix()
-    period = Keyword.get(opts, :period, @default_totp_period)
-
-    <<e1, e2, e3, e4, e5, e6>> = verification_code(secret, time, period)
-
-    (bxor(e1, a1) ||| bxor(e2, a2) ||| bxor(e3, a3) ||| bxor(e4, a4) ||| bxor(e5, a5) |||
-       bxor(e6, a6)) === 0 and not reused?(time, period, opts)
-  end
-
-  def valid?(secret, <<a1, a2, a3, a4>>, opts) do
+  def valid?(secret, otp, opts) do
     time = opts |> Keyword.get(:time, System.os_time(:second)) |> to_unix()
     period = Keyword.get(opts, :period, @default_totp_period)
     totp_size = Keyword.get(opts, :totp_size, @totp_size)
 
-    <<e1, e2, e3, e4>> = verification_code(secret, time, period, totp_size)
+    verification_code(secret, time, period, totp_size)
+    |> String.to_charlist()
+    |> Enum.zip(otp |> String.to_charlist())
+    |> Enum.reduce({0, 0}, fn {e, a}, {acc, count} ->
+      {acc ||| bxor(e, a), count + 1}
+    end)
+    |> case do
+      {bxor, count} ->
+        bxor === 0 and count === totp_size and not reused?(time, period, opts)
 
-    (bxor(e1, a1) ||| bxor(e2, a2) ||| bxor(e3, a3) ||| bxor(e4, a4)) === 0 and
-      not reused?(time, period, opts)
+      _ ->
+        false
+    end
   end
-
-  def valid?(_secret, _otp, _opts), do: false
 
   @spec reused?(integer(), pos_integer(), [option() | validate_option()]) :: boolean()
   defp reused?(time, period, opts) do
